@@ -9,6 +9,10 @@ LED_PIN = 18
 NUM_PIXELS = 100
 np = neopixel.NeoPixel(machine.Pin(LED_PIN), NUM_PIXELS)
 
+# Logging and reconnect cooldown
+LOG_FILE = "log.txt"
+COOLDOWN = 10  # seconds
+
 # LED state tracking
 led_state = "CustomRGB"
 lightLevel = 0.2
@@ -180,6 +184,26 @@ def serve(connection):
 
 
 
+# --- File + console logger ---
+def log(msg):
+    try:
+        ts = time.time()
+    except:
+        ts = 0
+
+    line = "[{}] {}\n".format(ts, msg)
+
+    # Print to serial
+    print(line, end="")
+
+    # Append to log file
+    try:
+        with open(LOG_FILE, "a") as f:
+            f.write(line)
+    except Exception as e:
+        print("Log write failed:", e)
+
+
 # --- Open socket ---
 def open_socket(ip):
     addr = (ip, 80)
@@ -187,17 +211,55 @@ def open_socket(ip):
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(addr)
     s.listen(1)
-    print(f"Listening on {ip}:80")
+    #Log only errors
+    #log("Listening on {}:80".format(ip))
     return s
 
 
-# --- Main ---
+# --- Main loop ---
 try:
-    ip = do_connect()
-    if ip:
-        sock = open_socket(ip)
-        serve(sock)
+    #Log only errors
+    #log("System start")
+
+    while True:
+        #Log only errors
+        #log("Attempting WiFi connection...")
+
+        try:
+            ip = do_connect()
+        except Exception as e:
+            #Log only errors
+            #log("do_connect exception: {}".format(e))
+            #Log only errors
+            #log("Cooldown {}s before retry".format(COOLDOWN))
+            time.sleep(COOLDOWN)
+            continue
+
+        if not ip:
+            log("do_connect returned no IP")
+            time.sleep(COOLDOWN)
+            continue
+        #Log only errors
+        #log("Connected, IP: {}".format(ip))
+
+        try:
+            sock = open_socket(ip)
+            serve(sock)
+        except Exception as e:
+            log("Server error: {}".format(e))
+        finally:
+            try:
+                sock.close()
+                #Log only errors
+                #log("Socket closed")
+            except:
+                pass
+        #Log only errors
+        #log("Restarting connection loop")
+        time.sleep(COOLDOWN)
+
 except KeyboardInterrupt:
+    log("KeyboardInterrupt: resetting")
     set_strip(turn_off=True)
     machine.reset()
 
