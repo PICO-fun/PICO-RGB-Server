@@ -229,9 +229,9 @@ try:
             ip = do_connect()
         except Exception as e:
             #Log only errors
-            #log("do_connect exception: {}".format(e))
+            log("do_connect exception: {}".format(e))
             #Log only errors
-            #log("Cooldown {}s before retry".format(COOLDOWN))
+            log("Cooldown {}s before retry".format(COOLDOWN))
             time.sleep(COOLDOWN)
             continue
 
@@ -259,9 +259,9 @@ try:
         time.sleep(COOLDOWN)
 
 except KeyboardInterrupt:
-    log("KeyboardInterrupt: resetting")
+    print("KeyboardInterrupt — stopping server")
     set_strip(turn_off=True)
-    machine.reset()
+
 
 
 
